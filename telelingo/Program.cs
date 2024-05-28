@@ -5,6 +5,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using telelingo;
+using Telelingo.DataContext;
 
 var botClient = new TelegramBotClient("");
 
@@ -14,6 +15,10 @@ ReceiverOptions receiverOptions = new()
 {
     AllowedUpdates = Array.Empty<UpdateType>(),
 };
+
+using var db = new DataContext();
+Console.WriteLine($"Database path: {db.DbPath}.");
+
 
 botClient.StartReceiving(
     updateHandler: HandleUpdateAsync,
@@ -35,7 +40,9 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
     if (message.Text is not { } messageText)
         return;
 
+
     var chatId = message.Chat.Id;
+
     JsonParser parser = new("words.json");
     words = parser.GetWordsDictionary();
 

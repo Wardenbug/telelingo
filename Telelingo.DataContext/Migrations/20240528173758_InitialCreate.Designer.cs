@@ -10,7 +10,7 @@ using Telelingo.DataContext;
 
 namespace Telelingo.DataContext.Migrations
 {
-    [DbContext(typeof(DataContext))]
+    [DbContext(typeof(SqliteContext))]
     [Migration("20240528173758_InitialCreate")]
     partial class InitialCreate
     {

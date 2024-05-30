@@ -9,7 +9,7 @@ using Telelingo.DataContext;
 
 namespace Telelingo.DataContext.Migrations
 {
-    [DbContext(typeof(DataContext))]
+    [DbContext(typeof(SqliteContext))]
     partial class DataContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)

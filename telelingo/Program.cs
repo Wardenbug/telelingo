@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using Microsoft.EntityFrameworkCore;
+using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -42,6 +43,22 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
 
 
     var chatId = message.Chat.Id;
+
+    var chat = db.Chat.FirstOrDefault((el) => el.ChatId == chatId);
+    if (chat is null)
+    {
+        await db.Chat.AddAsync(new Telelingo.EntityModels.Chat()
+        {
+            ChatId = chatId,
+        });
+        Console.WriteLine(db.ChangeTracker.ToDebugString());
+        await db.SaveChangesAsync();
+        Console.WriteLine(db.ChangeTracker.ToDebugString());
+    }
+    else
+    {
+        Console.WriteLine($"chat id {chat.ChatId}");
+    }
 
     JsonParser parser = new("words.json");
     words = parser.GetWordsDictionary();
@@ -94,7 +111,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
 
         Message sentMessage = await botClient.SendTextMessageAsync(
             chatId: chatId,
-            text: valuePair.Value,
+            text: word.Value,
             replyToMessageId: messageId,
             replyMarkup: replyKeyboardMarkup,
             cancellationToken: cancellationToken);
@@ -104,6 +121,7 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
        {
             new KeyboardButton[] { "Показати відповідь" },
+            new KeyboardButton[] { "Вже знаю" },
             new KeyboardButton[] { "Назад" },
         })
         {
@@ -112,14 +130,33 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
 
         Random rand = new Random();
 
-        valuePair = words.ElementAt(rand.Next(0, words.Count));
+        var lowestPriorityWord = db.Word
+            .Where(w => !db.ChatWord.Any(c => c.ChatId == chatId && c.WordId == w.WordId))
+            .OrderBy(w => w.Priority)
+            .FirstOrDefault();
 
-        Message sentMessage = await botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: valuePair.Key,
-            replyMarkup: replyKeyboardMarkup,
-            cancellationToken: cancellationToken);
-        messageId = sentMessage.MessageId;
+        if (lowestPriorityWord is null)
+        {
+            Console.WriteLine("Null");
+        }
+        else
+        {
+            word = lowestPriorityWord;
+            db.ChatWord.Add(new Telelingo.EntityModels.ChatWord()
+            {
+                ChatId = chatId,
+                WordId = word.WordId
+            });
+            await db.SaveChangesAsync();
+            Message sentMessage = await botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: $"Нове слово \n \n *{lowestPriorityWord.Key}*",
+                parseMode: ParseMode.MarkdownV2,
+                replyMarkup: replyKeyboardMarkup,
+                cancellationToken: cancellationToken);
+
+            messageId = sentMessage.MessageId;
+        }
     }
 }
 

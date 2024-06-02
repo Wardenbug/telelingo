@@ -6,6 +6,7 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telelingo.Bot.Interfaces;
 using Telelingo.DataContext;
+using Telelingo.Repositories;
 
 namespace Telelingo.Bot
 {
@@ -49,25 +50,15 @@ namespace Telelingo.Bot
                 return;
 
             using var db = new SqliteContext();
+            var chatRepository = new ChatRepository(db);
+            var wordRepository = new WordRepository(db);
+            var chatWordRepository = new ChatWordRepository(db);
+
             Console.WriteLine($"Database path: {db.DbPath}.");
 
             var chatId = message.Chat.Id;
 
-            var chat = db.Chat.FirstOrDefault((el) => el.ChatId == chatId);
-
-            if (chat is null)
-            {
-                await db.Chat.AddAsync(new Telelingo.EntityModels.Chat()
-                {
-                    ChatId = chatId,
-                });
-
-                await db.SaveChangesAsync();
-            }
-            else
-            {
-                Console.WriteLine($"chat id {chat.ChatId}");
-            }
+            await chatRepository.CreateIfNoExitsAsync(chatId);
 
             Console.WriteLine($"Received a '{messageText}' message in chat {chatId}.");
 
@@ -134,33 +125,21 @@ namespace Telelingo.Bot
                     ResizeKeyboard = true,
                 };
 
-                var lowestPriorityWord = db.Word
-                    .Where(w => !db.ChatWord.Any(c => c.ChatId == chatId && c.WordId == w.WordId))
-                    .OrderBy(w => w.Priority)
-                    .FirstOrDefault();
+                var lowestPriorityWord = await wordRepository.GetByLowestPriorityAsync(chatId);
 
-                if (lowestPriorityWord is null)
-                {
-                    Console.WriteLine("Null");
-                }
-                else
-                {
-                    _userState.word = lowestPriorityWord;
-                    db.ChatWord.Add(new Telelingo.EntityModels.ChatWord()
-                    {
-                        ChatId = chatId,
-                        WordId = _userState.word.WordId
-                    });
-                    await db.SaveChangesAsync();
-                    Message sentMessage = await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: $"Нове слово \n \n *{lowestPriorityWord.Key}*",
-                        parseMode: ParseMode.MarkdownV2,
-                        replyMarkup: replyKeyboardMarkup,
-                        cancellationToken: cancellationToken);
+                _userState.word = lowestPriorityWord;
 
-                    _userState.messageId = sentMessage.MessageId;
-                }
+                await chatWordRepository.CreateAsync(chatId, lowestPriorityWord.WordId);
+
+                Message sentMessage = await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: $"Нове слово \n \n *{lowestPriorityWord.Key}*",
+                    parseMode: ParseMode.MarkdownV2,
+                    replyMarkup: replyKeyboardMarkup,
+                    cancellationToken: cancellationToken);
+
+                _userState.messageId = sentMessage.MessageId;
+
             }
         }
 

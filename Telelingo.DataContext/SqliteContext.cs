@@ -4,7 +4,7 @@ using Telelingo.EntityModels;
 
 namespace Telelingo.DataContext
 {
-    public class DataContext : DbContext
+    public class SqliteContext : DbContext
     {
 
         public static readonly ILoggerFactory MyLoggerFactory
@@ -16,7 +16,7 @@ namespace Telelingo.DataContext
 
         public string DbPath { get; }
 
-        public DataContext()
+        public SqliteContext()
         {
             var folder = Environment.SpecialFolder.LocalApplicationData;
             var path = Environment.GetFolderPath(folder);

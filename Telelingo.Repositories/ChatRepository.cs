@@ -1,34 +1,29 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Telelingo.DataContext;
+using Telelingo.EntityModels;
 using Telelingo.Repositories.Interfaces;
 
 namespace Telelingo.Repositories
 {
-    public class ChatRepository : IChatRepository
+    public class ChatRepository : BaseRepository, IChatRepository
     {
-        private readonly SqliteContext _dbContext;
 
-        public ChatRepository(SqliteContext dbContext)
+        public ChatRepository(SqliteContext dbContext) : base(dbContext)
         {
-            _dbContext = dbContext;
         }
 
-        public async Task CreateIfNoExits(long chatId)
+        public async Task CreateIfNoExitsAsync(long chatId)
         {
             var chat = await _dbContext.Chat.FirstOrDefaultAsync((el) => el.ChatId == chatId);
 
             if (chat is null)
             {
-                await _dbContext.Chat.AddAsync(new Telelingo.EntityModels.Chat()
+                await _dbContext.Chat.AddAsync(new Chat()
                 {
                     ChatId = chatId,
                 });
 
                 await _dbContext.SaveChangesAsync();
-            }
-            else
-            {
-                Console.WriteLine($"chat id {chat.ChatId}");
             }
         }
     }

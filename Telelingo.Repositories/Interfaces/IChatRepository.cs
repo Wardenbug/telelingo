@@ -2,6 +2,6 @@
 {
     internal interface IChatRepository
     {
-        void CreateIfNoExits(long chatId);
+        Task CreateIfNoExitsAsync(long chatId);
     }
 }

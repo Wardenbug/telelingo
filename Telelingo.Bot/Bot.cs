@@ -5,7 +5,6 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telelingo.Bot.Interfaces;
-using Telelingo.DataContext;
 using Telelingo.Repositories;
 
 namespace Telelingo.Bot
@@ -13,11 +12,20 @@ namespace Telelingo.Bot
     public class Bot
     {
         private IUserState _userState;
+        private readonly ChatRepository _chatRepository;
+        private readonly WordRepository _wordRepository;
+        private readonly ChatWordRepository _chatWordRepository;
 
-        public async Task Start()
+        public Bot(ChatRepository chatRepository, WordRepository wordRepository, ChatWordRepository chatWordRepository)
         {
             _userState = new UserState();
+            _chatRepository = chatRepository;
+            _wordRepository = wordRepository;
+            _chatWordRepository = chatWordRepository;
 
+        }
+        public async Task Start()
+        {
             var botClient = new TelegramBotClient("");
 
             using CancellationTokenSource cts = new();
@@ -49,101 +57,39 @@ namespace Telelingo.Bot
             if (message.Text is not { } messageText)
                 return;
 
-            using var db = new SqliteContext();
-
-            var chatRepository = new ChatRepository(db);
-            var wordRepository = new WordRepository(db);
-            var chatWordRepository = new ChatWordRepository(db);
-
-            Console.WriteLine($"Database path: {db.DbPath}.");
-
             var chatId = message.Chat.Id;
 
-            await chatRepository.CreateIfNoExitsAsync(chatId);
+            await _chatRepository.CreateIfNoExitsAsync(chatId);
+
+            switch (messageText)
+            {
+                case "Назад":
+                    await HandleBackCommandAsync(botClient, chatId, cancellationToken);
+                    break;
+                case "/start":
+                    await HandleStartCommandAsync(botClient, chatId, cancellationToken);
+                    break;
+                case "Показати відповідь":
+                    await HandleShowAnswerCommandAsync(botClient, chatId, cancellationToken);
+                    break;
+                case "Не знаю":
+                    await HandleDontKnowCommandAsync(botClient, chatId, cancellationToken);
+                    break;
+                case "Важко":
+                    await HandleHardCommandAsync(botClient, chatId, cancellationToken);
+                    break;
+                case "Добре":
+                    await HandleGoodCommandAsync(botClient, chatId, cancellationToken);
+                    break;
+                case "Легко":
+                    await HandleEasyCommandAsync(botClient, chatId, cancellationToken);
+                    break;
+                default:
+                    await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
+                    break;
+            }
 
             Console.WriteLine($"Received a '{messageText}' message in chat {chatId}.");
-
-            if (messageText == "Назад")
-            {
-                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
-                {
-            new KeyboardButton[]{"Старт"}
-        });
-                Message sentMessage = await botClient.SendTextMessageAsync(
-               chatId: chatId,
-               text: "Натисните старт щоб почати вчитися",
-               replyMarkup: replyKeyboardMarkup,
-               cancellationToken: cancellationToken);
-            }
-            else if (messageText == "/start")
-            {
-
-            }
-            //else if (messageText == "Не знаю")
-            // learning.Rate == 0
-            //{
-            //}
-            //else if (messageText == "Важко")
-            // learning.Rate == learning.Rate
-            //{
-
-            //}
-            //else if (messageText == "Добре")
-            //{
-            // learning.Rate = learning.Rate + 1
-            //}
-            //else if (messageText == "Легко")
-            //{
-            // learning.Rate = learning.Rate * 2;
-            //}
-            // else if вже знаю learning.Rate = learning.RateMax
-            else if (messageText == "Показати відповідь")
-            {
-                // Echo received message text
-                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
-                {
-            new KeyboardButton[] { "Не знаю", "Важко", "Добре", "Легко" },
-            new KeyboardButton[] { "Назад" },
-        })
-                {
-                    ResizeKeyboard = true
-                };
-
-                Message sentMessage = await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: _userState.word.Value,
-                    replyToMessageId: _userState.messageId,
-                    replyMarkup: replyKeyboardMarkup,
-                    cancellationToken: cancellationToken);
-            }
-            else
-            {
-                ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
-               {
-            new KeyboardButton[] { "Показати відповідь" },
-            new KeyboardButton[] { "Вже знаю" },
-            new KeyboardButton[] { "Назад" },
-        })
-                {
-                    ResizeKeyboard = true,
-                };
-
-                var lowestPriorityWord = await wordRepository.GetByLowestPriorityAsync(chatId);
-
-                _userState.word = lowestPriorityWord;
-
-                await chatWordRepository.CreateAsync(chatId, lowestPriorityWord.WordId);
-
-                Message sentMessage = await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: $"Нове слово \n \n *{lowestPriorityWord.Key}*",
-                    parseMode: ParseMode.MarkdownV2,
-                    replyMarkup: replyKeyboardMarkup,
-                    cancellationToken: cancellationToken);
-
-                _userState.messageId = sentMessage.MessageId;
-
-            }
         }
 
         private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -158,5 +104,93 @@ namespace Telelingo.Bot
             Console.WriteLine(ErrorMessage);
             return Task.CompletedTask;
         }
+
+        private async Task<Message> HandleBackCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
+            {
+                new KeyboardButton[]{"Старт"}
+            });
+
+            Message sentMessage = await botClient.SendTextMessageAsync(
+            chatId: chatId,
+            text: "Натисните старт щоб почати вчитися",
+            replyMarkup: replyKeyboardMarkup,
+            cancellationToken: cancellationToken);
+
+            return sentMessage;
+        }
+
+        private async Task<Message> HandleStartCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task HandleShowAnswerCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            // Echo received message text
+            ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
+            {
+            new KeyboardButton[] { "Не знаю", "Важко", "Добре", "Легко" },
+            new KeyboardButton[] { "Назад" },
+        })
+            {
+                ResizeKeyboard = true
+            };
+
+            Message sentMessage = await botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: _userState.word.Value,
+                replyToMessageId: _userState.messageId,
+                replyMarkup: replyKeyboardMarkup,
+                cancellationToken: cancellationToken);
+        }
+
+        private async Task HandleDontKnowCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+        private async Task HandleHardCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+        private async Task HandleGoodCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task HandleEasyCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task HandleDefaultCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
+          {
+            new KeyboardButton[] { "Показати відповідь" },
+            new KeyboardButton[] { "Вже знаю" },
+            new KeyboardButton[] { "Назад" },
+        })
+            {
+                ResizeKeyboard = true,
+            };
+
+            var lowestPriorityWord = await _wordRepository.GetByLowestPriorityAsync(chatId);
+
+            _userState.word = lowestPriorityWord;
+
+            await _chatWordRepository.CreateAsync(chatId, lowestPriorityWord.WordId);
+
+            Message sentMessage = await botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: $"Нове слово \n \n *{lowestPriorityWord.Key}*",
+                parseMode: ParseMode.MarkdownV2,
+                replyMarkup: replyKeyboardMarkup,
+                cancellationToken: cancellationToken);
+
+            _userState.messageId = sentMessage.MessageId;
+        }
+
     }
 }

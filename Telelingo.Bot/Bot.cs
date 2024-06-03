@@ -50,6 +50,7 @@ namespace Telelingo.Bot
                 return;
 
             using var db = new SqliteContext();
+
             var chatRepository = new ChatRepository(db);
             var wordRepository = new WordRepository(db);
             var chatWordRepository = new ChatWordRepository(db);
@@ -79,21 +80,23 @@ namespace Telelingo.Bot
 
             }
             //else if (messageText == "Не знаю")
+            // learning.Rate == 0
             //{
-
             //}
             //else if (messageText == "Важко")
+            // learning.Rate == learning.Rate
             //{
 
             //}
             //else if (messageText == "Добре")
             //{
-
+            // learning.Rate = learning.Rate + 1
             //}
             //else if (messageText == "Легко")
             //{
-
+            // learning.Rate = learning.Rate * 2;
             //}
+            // else if вже знаю learning.Rate = learning.RateMax
             else if (messageText == "Показати відповідь")
             {
                 // Echo received message text

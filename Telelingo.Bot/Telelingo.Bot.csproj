@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Telelingo.DataContext\Telelingo.DataContext.csproj" />
+    <ProjectReference Include="..\Telelingo.Repositories\Telelingo.Repositories.csproj" />
   </ItemGroup>
 
 </Project>

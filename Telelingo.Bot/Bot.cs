@@ -61,34 +61,43 @@ namespace Telelingo.Bot
 
             await _chatRepository.CreateIfNoExitsAsync(chatId);
 
-            switch (messageText)
+            try
             {
-                case "Назад":
-                    await HandleBackCommandAsync(botClient, chatId, cancellationToken);
-                    break;
-                case "/start":
-                    await HandleStartCommandAsync(botClient, chatId, cancellationToken);
-                    break;
-                case "Показати відповідь":
-                    await HandleShowAnswerCommandAsync(botClient, chatId, cancellationToken);
-                    break;
-                case "Не знаю":
-                    await HandleDontKnowCommandAsync(botClient, chatId, cancellationToken);
-                    break;
-                case "Важко":
-                    await HandleHardCommandAsync(botClient, chatId, cancellationToken);
-                    break;
-                case "Добре":
-                    await HandleGoodCommandAsync(botClient, chatId, cancellationToken);
-                    break;
-                case "Легко":
-                    await HandleEasyCommandAsync(botClient, chatId, cancellationToken);
-                    break;
-                default:
-                    await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
-                    break;
+                switch (messageText)
+                {
+                    case "Назад":
+                        await HandleBackCommandAsync(botClient, chatId, cancellationToken);
+                        break;
+                    case "/start":
+                        await HandleStartCommandAsync(botClient, chatId, cancellationToken);
+                        break;
+                    case "Показати відповідь":
+                        await HandleShowAnswerCommandAsync(botClient, chatId, cancellationToken);
+                        break;
+                    case "Не знаю":
+                        await HandleDontKnowCommandAsync(botClient, chatId, cancellationToken);
+                        break;
+                    case "Важко":
+                        await HandleHardCommandAsync(botClient, chatId, cancellationToken);
+                        break;
+                    case "Добре":
+                        await HandleGoodCommandAsync(botClient, chatId, cancellationToken);
+                        break;
+                    case "Легко":
+                        await HandleEasyCommandAsync(botClient, chatId, cancellationToken);
+                        break;
+                    default:
+                        await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
+                        break;
+                }
+            } catch (Exception ex)
+            {
+                await botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: "На сьогодні все",
+                cancellationToken: cancellationToken);
             }
-
+       
             Console.WriteLine($"Received a '{messageText}' message in chat {chatId}.");
         }
 

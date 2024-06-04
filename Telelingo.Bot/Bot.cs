@@ -5,6 +5,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telelingo.Bot.Interfaces;
+using Telelingo.Core;
 using Telelingo.Repositories;
 
 namespace Telelingo.Bot
@@ -90,14 +91,15 @@ namespace Telelingo.Bot
                         await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
                         break;
                 }
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 await botClient.SendTextMessageAsync(
                 chatId: chatId,
                 text: "На сьогодні все",
                 cancellationToken: cancellationToken);
             }
-       
+
             Console.WriteLine($"Received a '{messageText}' message in chat {chatId}.");
         }
 
@@ -137,7 +139,6 @@ namespace Telelingo.Bot
 
         private async Task HandleShowAnswerCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
-            // Echo received message text
             ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
             {
             new KeyboardButton[] { "Не знаю", "Важко", "Добре", "Легко" },
@@ -157,20 +158,52 @@ namespace Telelingo.Bot
 
         private async Task HandleDontKnowCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var chatWord = await _chatWordRepository.GetByIdAsync(chatId, _userState.word.WordId);
+            var newLearningRate = LearningRateCalculator.CalculateNextLearningRate(chatWord.LearningRate, Commands.None);
+            var newShowOnDate = LearningRateCalculator.GetNextShowOnDate(chatWord.ShowOn, newLearningRate);
+
+            chatWord.ShowOn = newShowOnDate;
+            chatWord.LearningRate = newLearningRate;
+            await _chatWordRepository.SaveAllAsync();
+
+            await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
         }
         private async Task HandleHardCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var chatWord = await _chatWordRepository.GetByIdAsync(chatId, _userState.word.WordId);
+            var newLearningRate = LearningRateCalculator.CalculateNextLearningRate(chatWord.LearningRate, Commands.Hard);
+            var newShowOnDate = LearningRateCalculator.GetNextShowOnDate(chatWord.ShowOn, newLearningRate);
+
+            chatWord.ShowOn = newShowOnDate;
+            chatWord.LearningRate = newLearningRate;
+            await _chatWordRepository.SaveAllAsync();
+
+            await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
         }
         private async Task HandleGoodCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var chatWord = await _chatWordRepository.GetByIdAsync(chatId, _userState.word.WordId);
+            var newLearningRate = LearningRateCalculator.CalculateNextLearningRate(chatWord.LearningRate, Commands.Good);
+            var newShowOnDate = LearningRateCalculator.GetNextShowOnDate(chatWord.ShowOn, newLearningRate);
+
+            chatWord.ShowOn = newShowOnDate;
+            chatWord.LearningRate = newLearningRate;
+            await _chatWordRepository.SaveAllAsync();
+
+            await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
         }
 
         private async Task HandleEasyCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var chatWord = await _chatWordRepository.GetByIdAsync(chatId, _userState.word.WordId);
+            var newLearningRate = LearningRateCalculator.CalculateNextLearningRate(chatWord.LearningRate, Commands.Easy);
+            var newShowOnDate = LearningRateCalculator.GetNextShowOnDate(chatWord.ShowOn, newLearningRate);
+
+            chatWord.ShowOn = newShowOnDate;
+            chatWord.LearningRate = newLearningRate;
+            await _chatWordRepository.SaveAllAsync();
+
+            await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
         }
 
         private async Task HandleDefaultCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
@@ -200,6 +233,5 @@ namespace Telelingo.Bot
 
             _userState.messageId = sentMessage.MessageId;
         }
-
     }
 }

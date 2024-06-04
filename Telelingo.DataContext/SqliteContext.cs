@@ -29,6 +29,8 @@ namespace Telelingo.DataContext
                 .HasMany(chat => chat.Words)
                 .WithMany(word => word.Chats)
                 .UsingEntity<ChatWord>();
+
+            Seed.SeedWord(modelBuilder);
         }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

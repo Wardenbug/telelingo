@@ -10,5 +10,10 @@ namespace Telelingo.Repositories
         {
             _dbContext = dbContext;
         }
+
+        public async Task<int> SaveAllAsync()
+        {
+            return await _dbContext.SaveChangesAsync();
+        }
     }
 }

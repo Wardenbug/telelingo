@@ -17,6 +17,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Telelingo.EntityModels\Telelingo.EntityModels.csproj" />
+    <ProjectReference Include="..\Telelingo.Parser\Telelingo.Parser.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="words.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,5 @@
-﻿using Telelingo.DataContext;
+﻿using Microsoft.EntityFrameworkCore;
+using Telelingo.DataContext;
 using Telelingo.EntityModels;
 using Telelingo.Repositories.Interfaces;
 
@@ -18,6 +19,13 @@ namespace Telelingo.Repositories
                 WordId = wordId
             });
             await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<ChatWord> GetByIdAsync(long chatId, long wordId)
+        {
+            return await _dbContext.ChatWord
+                .Where((c) => c.ChatId == chatId && c.WordId == wordId)
+                .FirstOrDefaultAsync();
         }
     }
 }

@@ -1,10 +1,10 @@
 ﻿namespace Telelingo.Core
 {
-    public class LearningRateCalculator
+    public static class LearningRateCalculator
     {
         public static readonly int MaxRate = 100;
 
-        public DateTime GetNextShowOnDate(DateTime currentDate, int learningRate)
+        public static DateTime GetNextShowOnDate(DateTime currentDate, int learningRate)
         {
             if (learningRate < 4)
             {
@@ -17,10 +17,8 @@
             }
 
             return currentDate.AddDays(learningRate);
-
-            throw new NotImplementedException();
         }
-        public int CalculateNextLearningRate(int learningRate, Commands command)
+        public static int CalculateNextLearningRate(int learningRate, Commands command)
         {
             switch (command)
             {

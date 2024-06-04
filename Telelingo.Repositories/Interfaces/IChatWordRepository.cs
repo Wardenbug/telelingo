@@ -1,7 +1,10 @@
-﻿namespace Telelingo.Repositories.Interfaces
+﻿using Telelingo.EntityModels;
+
+namespace Telelingo.Repositories.Interfaces
 {
     internal interface IChatWordRepository
     {
         Task CreateAsync(long chatId, long wordId);
+        Task<ChatWord> GetByIdAsync(long chatId, long wordId);
     }
 }

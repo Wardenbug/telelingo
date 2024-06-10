@@ -16,19 +16,23 @@ namespace Telelingo.Bot
         private readonly ChatRepository _chatRepository;
         private readonly WordRepository _wordRepository;
         private readonly ChatWordRepository _chatWordRepository;
+        private readonly ITelegramBotClient _botClient;
 
-        public Bot(ChatRepository chatRepository, WordRepository wordRepository, ChatWordRepository chatWordRepository)
+        public Bot(ChatRepository chatRepository,
+            WordRepository wordRepository,
+            ChatWordRepository chatWordRepository,
+            ITelegramBotClient botClient
+            )
         {
             _userState = new UserState();
             _chatRepository = chatRepository;
             _wordRepository = wordRepository;
             _chatWordRepository = chatWordRepository;
+            _botClient = botClient;
 
         }
-        public async Task Start()
+        public async Task StartAsync()
         {
-            var botClient = new TelegramBotClient("");
-
             using CancellationTokenSource cts = new();
 
             ReceiverOptions receiverOptions = new()
@@ -37,13 +41,13 @@ namespace Telelingo.Bot
             };
 
 
-            botClient.StartReceiving(
+            _botClient.StartReceiving(
                 updateHandler: HandleUpdateAsync,
                 pollingErrorHandler: HandlePollingErrorAsync,
                 receiverOptions: receiverOptions,
                 cancellationToken: cts.Token
             );
-            var me = await botClient.GetMeAsync();
+            var me = await _botClient.GetMeAsync();
 
             Console.WriteLine($"Start listening for @{me.Username}");
             Console.ReadLine();
@@ -53,10 +57,9 @@ namespace Telelingo.Bot
 
         private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            if (update.Message is not { } message)
+            if (update.Message is not { } message || message.Text is not { } messageText)
                 return;
-            if (message.Text is not { } messageText)
-                return;
+
 
             var chatId = message.Chat.Id;
 
@@ -64,40 +67,23 @@ namespace Telelingo.Bot
 
             try
             {
-                switch (messageText)
+                await (messageText switch
                 {
-                    case "Назад":
-                        await HandleBackCommandAsync(botClient, chatId, cancellationToken);
-                        break;
-                    case "/start":
-                        await HandleStartCommandAsync(botClient, chatId, cancellationToken);
-                        break;
-                    case "Показати відповідь":
-                        await HandleShowAnswerCommandAsync(botClient, chatId, cancellationToken);
-                        break;
-                    case "Не знаю":
-                        await HandleWordLearningAsync(botClient, chatId, Commands.None, cancellationToken);
-                        break;
-                    case "Важко":
-                        await HandleWordLearningAsync(botClient, chatId, Commands.Hard, cancellationToken);
-                        break;
-                    case "Добре":
-                        await HandleWordLearningAsync(botClient, chatId, Commands.Good, cancellationToken);
-                        break;
-                    case "Легко":
-                        await HandleWordLearningAsync(botClient, chatId, Commands.Easy, cancellationToken);
-                        break;
-                    default:
-                        await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
-                        break;
-                }
+                    "Назад" => HandleBackCommandAsync(chatId, cancellationToken),
+                    "/start" => HandleStartCommandAsync(chatId, cancellationToken),
+                    "Показати відповідь" => HandleShowAnswerCommandAsync(chatId, cancellationToken),
+                    "Не знаю" => HandleWordLearningAsync(chatId, Commands.None, cancellationToken),
+                    "Важко" => HandleWordLearningAsync(chatId, Commands.Hard, cancellationToken),
+                    "Добре" => HandleWordLearningAsync(chatId, Commands.Good, cancellationToken),
+                    "Легко" => HandleWordLearningAsync(chatId, Commands.Easy, cancellationToken),
+                    _ => HandleDefaultCommandAsync(chatId, cancellationToken)
+                });
             }
             catch (Exception ex)
             {
-                await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: "На сьогодні все",
-                cancellationToken: cancellationToken);
+                Console.WriteLine(ex.ToString());
+
+                await SendTextMessageAsync(_botClient, chatId, "На сьогодні все", CreateKeyboard("Старт"), cancellationToken);
             }
 
             Console.WriteLine($"Received a '{messageText}' message in chat {chatId}.");
@@ -116,28 +102,17 @@ namespace Telelingo.Bot
             return Task.CompletedTask;
         }
 
-        private async Task<Message> HandleBackCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        private async Task<Message> HandleBackCommandAsync(long chatId, CancellationToken cancellationToken)
         {
-            ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
-            {
-                new KeyboardButton[]{"Старт"}
-            });
-
-            Message sentMessage = await botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "Натисните старт щоб почати вчитися",
-            replyMarkup: replyKeyboardMarkup,
-            cancellationToken: cancellationToken);
-
-            return sentMessage;
+            return await SendTextMessageAsync(_botClient, chatId, "Натисните старт щоб почати вчитися", CreateKeyboard("Старт"), cancellationToken);
         }
 
-        private async Task<Message> HandleStartCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        private async Task<Message> HandleStartCommandAsync(long chatId, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        private async Task HandleWordLearningAsync(ITelegramBotClient botClient, long chatId, Commands command, CancellationToken cancellationToken)
+        private async Task HandleWordLearningAsync(long chatId, Commands command, CancellationToken cancellationToken)
         {
             var chatWord = await _chatWordRepository.GetByIdAsync(chatId, _userState.word.WordId);
             var newLearningRate = LearningRateCalculator.CalculateNextLearningRate(chatWord.LearningRate, command);
@@ -147,53 +122,73 @@ namespace Telelingo.Bot
             chatWord.LearningRate = newLearningRate;
             await _chatWordRepository.SaveAllAsync();
 
-            await HandleDefaultCommandAsync(botClient, chatId, cancellationToken);
+            await HandleDefaultCommandAsync(chatId, cancellationToken);
         }
-        private async Task HandleShowAnswerCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        private async Task HandleShowAnswerCommandAsync(long chatId, CancellationToken cancellationToken)
         {
-            ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
-            {
-            new KeyboardButton[] { "Не знаю", "Важко", "Добре", "Легко" },
-            new KeyboardButton[] { "Назад" },
-        })
-            {
-                ResizeKeyboard = true
-            };
+            var replyKeyboardMarkup = CreateKeyboard(new[] { "Не знаю", "Важко", "Добре", "Легко" }, new[] { "Назад" });
 
-            Message sentMessage = await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: _userState.word.Value,
-                replyToMessageId: _userState.messageId,
-                replyMarkup: replyKeyboardMarkup,
-                cancellationToken: cancellationToken);
+            _userState.maxNewWordInDay--;
+
+            await SendTextMessageAsync(_botClient, chatId, _userState.word.Value, replyKeyboardMarkup, cancellationToken);
         }
 
-        private async Task HandleDefaultCommandAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        private async Task<Message> HandleDefaultCommandAsync(long chatId, CancellationToken cancellationToken)
         {
-            ReplyKeyboardMarkup replyKeyboardMarkup = new(new[]
-          {
-            new KeyboardButton[] { "Показати відповідь" },
-            new KeyboardButton[] { "Вже знаю" },
-            new KeyboardButton[] { "Назад" },
-        })
-            {
-                ResizeKeyboard = true,
-            };
+            var replyKeyboardMarkup = CreateKeyboard(new[] { "Показати відповідь" }, new[] { "Вже знаю" }, new[] { "Назад" });
 
             var lowestPriorityWord = await _wordRepository.GetByLowestPriorityAsync(chatId);
 
-            _userState.word = lowestPriorityWord;
+            if (lowestPriorityWord is not null && _userState.maxNewWordInDay > 0)
+            {
+                _userState.word = lowestPriorityWord;
+                await _chatWordRepository.CreateAsync(chatId, lowestPriorityWord.WordId);
 
-            await _chatWordRepository.CreateAsync(chatId, lowestPriorityWord.WordId);
+                var message = await SendTextMessageAsync(_botClient, chatId, $"Нове слово \n \n *{lowestPriorityWord.Key}*", replyKeyboardMarkup, cancellationToken);
+                _userState.messageId = message.MessageId;
 
-            Message sentMessage = await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: $"Нове слово \n \n *{lowestPriorityWord.Key}*",
-                parseMode: ParseMode.MarkdownV2,
-                replyMarkup: replyKeyboardMarkup,
-                cancellationToken: cancellationToken);
+                return message;
+            }
 
+            var word = await _chatWordRepository.GetWordByShowOnDate(chatId, DateTime.UtcNow);
+
+            if (word is null)
+            {
+                throw new Exception("There is no word for today");
+            }
+
+            _userState.word = word;
+            Console.WriteLine($"{word.WordId} {word.Key} {word.Value}");
+
+            var sentMessage = await SendTextMessageAsync(_botClient, chatId, $"*{word.Key}*", replyKeyboardMarkup, cancellationToken);
             _userState.messageId = sentMessage.MessageId;
+
+            return sentMessage;
+        }
+
+        private async Task<Message> SendTextMessageAsync(ITelegramBotClient botClient, long chatId, string text, IReplyMarkup replyMarkup, CancellationToken cancellationToken)
+        {
+            return await botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: text,
+                parseMode: ParseMode.MarkdownV2,
+                replyMarkup: replyMarkup,
+                cancellationToken: cancellationToken);
+        }
+
+        private IReplyMarkup CreateKeyboard(params string[] buttons)
+        {
+            return new ReplyKeyboardMarkup(buttons.Select(button => new[] { new KeyboardButton(button) }).ToArray())
+            {
+                ResizeKeyboard = true
+            };
+        }
+        private IReplyMarkup CreateKeyboard(params string[][] buttons)
+        {
+            return new ReplyKeyboardMarkup(buttons.Select(row => row.Select(button => new KeyboardButton(button)).ToArray()))
+            {
+                ResizeKeyboard = true
+            };
         }
     }
 }

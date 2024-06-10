@@ -6,5 +6,6 @@ namespace Telelingo.Bot.Interfaces
     {
         Word word { get; set; }
         int messageId { get; set; }
+        int maxNewWordInDay { get; set; }
     }
 }

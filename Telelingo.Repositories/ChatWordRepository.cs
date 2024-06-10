@@ -27,5 +27,16 @@ namespace Telelingo.Repositories
                 .Where((c) => c.ChatId == chatId && c.WordId == wordId)
                 .FirstOrDefaultAsync();
         }
+
+        public async Task<Word> GetWordByShowOnDate(long chatId, DateTime showOnDate)
+        {
+            return await _dbContext.ChatWord
+                .Where((c) => c.ShowOn <= showOnDate && c.ChatId == chatId)
+                .Join(_dbContext.Word,
+                (cw) => cw.WordId,
+                (w) => w.WordId,
+                (cw, w) => w)
+                .FirstOrDefaultAsync();
+        }
     }
 }

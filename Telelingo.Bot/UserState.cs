@@ -7,5 +7,6 @@ namespace Telelingo.Bot
     {
         public Word word { get; set; }
         public int messageId { get; set; }
+        public int maxNewWordInDay { get; set; } = 10;
     }
 }

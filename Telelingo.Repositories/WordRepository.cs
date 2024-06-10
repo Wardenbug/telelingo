@@ -18,12 +18,7 @@ namespace Telelingo.Repositories
                         .Any(c => c.ChatId == chatId && c.WordId == w.WordId))
                    .OrderBy(w => w.Priority)
                    .FirstOrDefaultAsync();
-
-            if (lowestPriorityWord is null)
-            {
-                throw new Exception("There is no words for this user");
-            }
-
+                
             return lowestPriorityWord;
         }
     }

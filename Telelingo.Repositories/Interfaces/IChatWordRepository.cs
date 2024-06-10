@@ -6,5 +6,7 @@ namespace Telelingo.Repositories.Interfaces
     {
         Task CreateAsync(long chatId, long wordId);
         Task<ChatWord> GetByIdAsync(long chatId, long wordId);
+
+        Task<Word> GetWordByShowOnDate(long chatId, DateTime showOnDate);
     }
 }

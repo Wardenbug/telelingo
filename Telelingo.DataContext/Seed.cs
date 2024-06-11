@@ -14,11 +14,10 @@ namespace Telelingo.DataContext
             int count = 1;
             foreach (var pair in dict)
             {
-                Console.WriteLine($"{pair.Key}");
                 modelBuilder.Entity<Word>().HasData(new Word()
                 {
-                    Key = pair.Key,
-                    Value = pair.Value,
+                    Key = pair.Key.Replace(".", "\\."),
+                    Value = pair.Value.Replace(".", "\\."),
                     Priority = 1,
                     WordId = count
                 });
